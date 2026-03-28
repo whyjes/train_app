@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 void main() {
   runApp(MaterialApp(
     theme: ThemeData(
+      // 修正点 1：将 .fromSeed 改为 ColorScheme.fromSeed
       colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
       useMaterial3: true,
     ),
