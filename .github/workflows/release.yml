@@ -1,0 +1,22 @@
+name: Build APK
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+      - name: Init and Build
+        run: |
+          flutter create --platforms android --org com.train.query .
+          # 强制覆盖自动生成的代码
+          cp -f lib/main.dart lib/main.dart 
+          flutter pub get
+          flutter build apk --debug
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: train-query-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
