@@ -8,7 +8,7 @@ import 'package:path_provider/path_provider.dart';
 void main() {
   runApp(MaterialApp(
     theme: ThemeData(
-      primarySwatch: Colors.blue,
+      colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
       useMaterial3: true,
     ),
     home: TrainSearchPage(),
@@ -21,8 +21,8 @@ class TrainSearchPage extends StatefulWidget {
 }
 
 class _TrainSearchPageState extends State<TrainSearchPage> {
-  List<List<dynamic>> allData = []; // 原始总数据
-  List<List<dynamic>> displayData = []; // 搜索过滤后的数据
+  List<List<dynamic>> allData = [];
+  List<List<dynamic>> displayData = [];
   String statusMessage = "正在加载数据...";
 
   @override
@@ -31,7 +31,6 @@ class _TrainSearchPageState extends State<TrainSearchPage> {
     initDatabase();
   }
 
-  // 初始化：优先读用户上传的，没有则读内置 assets
   Future<void> initDatabase() async {
     try {
       final directory = await getApplicationDocumentsDirectory();
@@ -57,29 +56,25 @@ class _TrainSearchPageState extends State<TrainSearchPage> {
   }
 
   void _processCsvData(String rawString) {
-    // 自动识别逗号或制表符
     List<List<dynamic>> listData = const CsvToListConverter().convert(rawString);
     setState(() {
       if (listData.length > 1) {
-        allData = listData.sublist(1); // 跳过表头
+        allData = listData.sublist(1);
       } else {
         allData = listData;
       }
-      displayData = []; // 初始时不显示结果，输入后再显示
+      displayData = [];
     });
   }
 
-  // 执行模糊查询
   void _handleSearch(String query) {
     if (query.isEmpty) {
       setState(() => displayData = []);
       return;
     }
-    
     String upQuery = query.toUpperCase();
     setState(() {
       displayData = allData.where((row) {
-        // 假设 A列(0)是车次，B列(1)是区间
         String colA = row.isNotEmpty ? row[0].toString().toUpperCase() : "";
         String colB = row.length > 1 ? row[1].toString() : "";
         return colA.contains(upQuery) || colB.contains(query);
@@ -87,7 +82,6 @@ class _TrainSearchPageState extends State<TrainSearchPage> {
     });
   }
 
-  // 上传新的 CSV 文件
   Future<void> _pickAndUploadFile() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -97,18 +91,11 @@ class _TrainSearchPageState extends State<TrainSearchPage> {
     if (result != null && result.files.single.path != null) {
       File selectedFile = File(result.files.single.path!);
       String content = await selectedFile.readAsString();
-
-      // 保存到本地
       final directory = await getApplicationDocumentsDirectory();
       final savedFile = File('${directory.path}/my_train_data.csv');
       await savedFile.writeAsString(content);
-
       _processCsvData(content);
       setState(() => statusMessage = "数据库更新成功！");
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("新数据库已导入并保存")),
-      );
     }
   }
 
