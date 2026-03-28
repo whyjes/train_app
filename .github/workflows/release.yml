@@ -10,31 +10,120 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Init and Build
+      - name: Force Create and Build
         run: |
-          # 1. 备份你仓库里写的 main.dart (防止被 flutter create 覆盖)
-          mkdir -p backup
-          cp lib/main.dart backup/main.dart
-          cp pubspec.yaml backup/pubspec.yaml
-
-          # 2. 生成工程结构
+          # 1. 强制创建项目结构
           flutter create --platforms android --org com.train.query .
           
-          # 3. 【核心步骤】把正确代码强行换回去
-          cp -f backup/main.dart lib/main.dart
-          cp -f backup/pubspec.yaml pubspec.yaml
-          
-          # 4. 再次检查数据文件夹
+          # 2. 强行写入正确的 pubspec.yaml
+          cat <<EOF > pubspec.yaml
+          name: train_app
+          environment:
+            sdk: '>=3.0.0 <4.0.0'
+          dependencies:
+            flutter:
+              sdk: flutter
+            csv: ^6.0.0
+            file_picker: ^8.0.0
+            path_provider: ^2.1.0
+          flutter:
+            uses-material-design: true
+            assets:
+              - assets/data.csv
+          EOF
+
+          # 3. 强行写入正确且无语法错误的 main.dart
+          mkdir -p lib
+          cat <<EOF > lib/main.dart
+          import 'dart:io';
+          import 'package:flutter/material.dart';
+          import 'package:flutter/services.dart' show rootBundle;
+          import 'package:csv/csv.dart';
+          import 'package:file_picker/file_picker.dart';
+          import 'package:path_provider/path_provider.dart';
+
+          void main() => runApp(MaterialApp(
+            theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue), useMaterial3: true),
+            home: TrainSearchPage(),
+          ));
+
+          class TrainSearchPage extends StatefulWidget {
+            @override
+            _TrainSearchPageState createState() => _TrainSearchPageState();
+          }
+
+          class _TrainSearchPageState extends State<TrainSearchPage> {
+            List<List<dynamic>> allData = [];
+            List<List<dynamic>> displayData = [];
+            String status = "加载中...";
+
+            @override
+            void initState() { super.initState(); initData(); }
+
+            Future<void> initData() async {
+              try {
+                final dir = await getApplicationDocumentsDirectory();
+                final file = File('\${dir.path}/data.csv');
+                String raw;
+                if (await file.exists()) {
+                  raw = await file.readAsString();
+                } else {
+                  raw = await rootBundle.loadString("assets/data.csv");
+                }
+                setState(() {
+                  allData = const CsvToListConverter().convert(raw);
+                  if (allData.length > 1) allData = allData.sublist(1);
+                  status = "就绪";
+                });
+              } catch (e) { setState(() => status = "出错: \$e"); }
+            }
+
+            void search(String q) {
+              if (q.isEmpty) { setState(() => displayData = []); return; }
+              setState(() {
+                displayData = allData.where((r) => 
+                  r.toString().toUpperCase().contains(q.toUpperCase())).toList();
+              });
+            }
+
+            @override
+            Widget build(BuildContext context) {
+              return Scaffold(
+                appBar: AppBar(title: Text("列车查询")),
+                body: Column(children: [
+                  Padding(padding: EdgeInsets.all(10), child: TextField(onChanged: search, decoration: InputDecoration(labelText: "搜索车次/车站", border: OutlineInputBorder()))),
+                  Expanded(child: ListView.builder(
+                    itemCount: displayData.length,
+                    itemBuilder: (c, i) => ListTile(title: Text(displayData[i][0].toString()), subtitle: Text(displayData[i].length > 1 ? displayData[i][1].toString() : "")),
+                  ))
+                ]),
+                floatingActionButton: FloatingActionButton(
+                  onPressed: () async {
+                    FilePickerResult? r = await FilePicker.platform.pickFiles();
+                    if (r != null) {
+                      File f = File(r.files.single.path!);
+                      final dir = await getApplicationDocumentsDirectory();
+                      await f.copy('\${dir.path}/data.csv');
+                      initData();
+                    }
+                  },
+                  child: Icon(Icons.upload_file),
+                ),
+              );
+            }
+          }
+          EOF
+
+          # 4. 确保 assets 目录存在
           mkdir -p assets
-          [ -f assets/data.csv ] || touch assets/data.csv
-          
+          touch assets/data.csv
+
           # 5. 编译
           flutter pub get
           flutter build apk --debug
 
       - name: Upload APK
-        if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: train-query-apk
+          name: train-app
           path: build/app/outputs/flutter-apk/app-debug.apk
