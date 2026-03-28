@@ -8,7 +8,7 @@ import 'package:path_provider/path_provider.dart';
 void main() {
   runApp(MaterialApp(
     theme: ThemeData(
-      // 修正点 1：将 .fromSeed 改为 ColorScheme.fromSeed
+      // 修改点 1: 显式写出 ColorScheme
       colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
       useMaterial3: true,
     ),
@@ -128,7 +128,17 @@ class _TrainSearchPageState extends State<TrainSearchPage> {
           ),
           Expanded(
             child: displayData.isEmpty
-                ? Center(child: Text(allData.isEmpty ? "数据库为空" : "输入关键词开始查询"))
+                ? Center(
+                    child: Column(
+                      // 修改点 2: 显式写出 MainAxisAlignment
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.train, size: 64, color: Colors.grey),
+                        SizedBox(height: 10),
+                        Text(allData.isEmpty ? "数据库为空" : "输入关键词开始查询"),
+                      ],
+                    ),
+                  )
                 : ListView.builder(
                     itemCount: displayData.length,
                     itemBuilder: (context, index) {
