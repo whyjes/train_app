@@ -1,5 +1,6 @@
 name: Build APK
 on: [push]
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -8,14 +9,20 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
+
       - name: Init and Build
         run: |
+          # 1. 自动生成安卓工程结构
           flutter create --platforms android --org com.train.query .
-          # 强制覆盖自动生成的代码
-          cp -f lib/main.dart lib/main.dart 
+          
+          # 2. 获取插件依赖
           flutter pub get
+          
+          # 3. 直接编译 (不再需要手动复制，因为文件已经在正确的位置)
           flutter build apk --debug
+
       - name: Upload APK
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: train-query-apk
