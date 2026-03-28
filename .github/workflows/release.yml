@@ -12,13 +12,24 @@ jobs:
 
       - name: Init and Build
         run: |
-          # 1. 自动生成安卓工程结构
+          # 1. 备份你仓库里写的 main.dart (防止被 flutter create 覆盖)
+          mkdir -p backup
+          cp lib/main.dart backup/main.dart
+          cp pubspec.yaml backup/pubspec.yaml
+
+          # 2. 生成工程结构
           flutter create --platforms android --org com.train.query .
           
-          # 2. 获取插件依赖
-          flutter pub get
+          # 3. 【核心步骤】把正确代码强行换回去
+          cp -f backup/main.dart lib/main.dart
+          cp -f backup/pubspec.yaml pubspec.yaml
           
-          # 3. 直接编译 (不再需要手动复制，因为文件已经在正确的位置)
+          # 4. 再次检查数据文件夹
+          mkdir -p assets
+          [ -f assets/data.csv ] || touch assets/data.csv
+          
+          # 5. 编译
+          flutter pub get
           flutter build apk --debug
 
       - name: Upload APK
